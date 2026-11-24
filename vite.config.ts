@@ -101,7 +101,7 @@ export default defineConfig(() => {
           maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,jpg,svg,woff,woff2}'],
           navigateFallback: '/index.html',
-          navigateFallbackDenylist: [/^\/api\//, /^\/\.well-known\//, /^\/privacy$/],
+          navigateFallbackDenylist: [/^\/api\//, /^\/\.well-known\//, /^\/privacy/],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

@@ -95,7 +95,7 @@ async function startServer() {
 
   // Google Play Store Trusted Web Activity (TWA) Digital Asset Links endpoint
   app.get('/.well-known/assetlinks.json', (_req, res) => {
-    const packageName = process.env.ANDROID_PACKAGE_NAME || 'app.habariweather.twa';
+    const packageName = process.env.ANDROID_PACKAGE_NAME || 'uk.habari.weather';
     const rawFingerprints =
       process.env.ANDROID_SHA256_FINGERPRINT ||
       'REPLACE_WITH_PLAY_APP_SIGNING_SHA256_FINGERPRINT';

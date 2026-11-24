@@ -1,0 +1,263 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidGroundTruthReport(data) {
+      return data.keys().hasAll([
+        'tagType',
+        'label',
+        'note',
+        'lat',
+        'lng',
+        'roadOrArea',
+        'severity',
+        'status',
+        'authorUid',
+        'authorName',
+        'verificationsCount',
+        'createdAt',
+        'updatedAt',
+        'expiresAt'
+      ])
+      && data.keys().hasOnly([
+        'tagType',
+        'label',
+        'note',
+        'lat',
+        'lng',
+        'roadOrArea',
+        'severity',
+        'status',
+        'authorUid',
+        'authorName',
+        'verificationsCount',
+        'createdAt',
+        'updatedAt',
+        'expiresAt'
+      ])
+      && data.tagType in [
+        'street_flooded',
+        'bridge_fog',
+        'black_ice',
+        'high_crosswind',
+        'power_out',
+        'downed_tree',
+        'hail'
+      ]
+      && data.label is string && data.label.size() >= 2 && data.label.size() <= 60
+      && data.note is string && data.note.size() <= 180
+      && data.lat is number && data.lat >= -90 && data.lat <= 90
+      && data.lng is number && data.lng >= -180 && data.lng <= 180
+      && data.roadOrArea is string && data.roadOrArea.size() >= 1 && data.roadOrArea.size() <= 100
+      && data.severity in ['caution', 'hazard', 'severe']
+      && data.status in ['active', 'resolved']
+      && isValidId(data.authorUid)
+      && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 48
+      && data.verificationsCount is int && data.verificationsCount >= 1 && data.verificationsCount <= 100000
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp
+      && data.expiresAt is timestamp;
+    }
+
+    function isValidReportVerification(data, reportId, verifierUid) {
+      return data.keys().hasAll(['uid', 'reportId', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'reportId', 'createdAt'])
+        && isValidId(data.uid)
+        && data.uid == verifierUid
+        && data.uid == request.auth.uid
+        && isValidId(data.reportId)
+        && data.reportId == reportId
+        && data.createdAt is timestamp
+        && data.createdAt == request.time;
+    }
+
+    function isValidThresholdRule(data, ownerUid) {
+      return data.keys().hasAll([
+        'userId',
+        'title',
+        'ruleType',
+        'checkTime',
+        'cityId',
+        'cityName',
+        'tempThresholdC',
+        'rainProbThreshold',
+        'windThresholdKmh',
+        'enabled',
+        'createdAt',
+        'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'userId',
+        'title',
+        'ruleType',
+        'checkTime',
+        'cityId',
+        'cityName',
+        'tempThresholdC',
+        'rainProbThreshold',
+        'windThresholdKmh',
+        'enabled',
+        'createdAt',
+        'updatedAt'
+      ])
+      && isValidId(data.userId)
+      && data.userId == ownerUid
+      && data.userId == request.auth.uid
+      && data.title is string && data.title.size() >= 2 && data.title.size() <= 100
+      && data.ruleType in ['jacket_or_umbrella', 'jacket', 'umbrella', 'wind', 'freeze', 'open_windows']
+      && data.checkTime is string && data.checkTime.size() == 5 && data.checkTime.matches('^[0-2][0-9]:[0-5][0-9]$')
+      && data.cityId is string && data.cityId.size() >= 1 && data.cityId.size() <= 80
+      && data.cityName is string && data.cityName.size() >= 1 && data.cityName.size() <= 80
+      && data.tempThresholdC is number && data.tempThresholdC >= -50 && data.tempThresholdC <= 50
+      && data.rainProbThreshold is int && data.rainProbThreshold >= 0 && data.rainProbThreshold <= 100
+      && data.windThresholdKmh is number && data.windThresholdKmh >= 0 && data.windThresholdKmh <= 250
+      && data.enabled is bool
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    // Boot connectivity check document
+    match /test/connection {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
+    match /groundTruthReports/{reportId} {
+      // Community map reads active reports; authors can read their own resolved reports
+      allow get: if isValidId(reportId)
+        && (existing().status == 'active' || (isSignedIn() && existing().authorUid == request.auth.uid));
+
+      // Enforce query boundary directly on resource.data
+      allow list: if existing().status == 'active';
+
+      allow create: if isVerifiedUser()
+        && isValidId(reportId)
+        && isValidGroundTruthReport(incoming())
+        && incoming().authorUid == request.auth.uid
+        && incoming().status == 'active'
+        && incoming().verificationsCount == 1
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && incoming().expiresAt > request.time
+        && incoming().expiresAt <= request.time + duration.value(24, 'h');
+
+      allow update: if isVerifiedUser()
+        && isValidId(reportId)
+        && isValidGroundTruthReport(incoming())
+        && existing().status == 'active'
+        && incoming().authorUid == existing().authorUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Tier 1 (Author): Resolve own active report
+          (
+            existing().authorUid == request.auth.uid
+            && incoming().status == 'resolved'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+          ||
+          // Tier 2 (Community Verifier): Verify active report once atomically
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['verificationsCount', 'updatedAt'])
+            && incoming().verificationsCount == existing().verificationsCount + 1
+            && !exists(/databases/$(database)/documents/groundTruthReports/$(reportId)/verifications/$(request.auth.uid))
+            && existsAfter(/databases/$(database)/documents/groundTruthReports/$(reportId)/verifications/$(request.auth.uid))
+          )
+        );
+
+      allow delete: if isVerifiedUser()
+        && isValidId(reportId)
+        && existing().authorUid == request.auth.uid;
+
+      match /verifications/{verifierUid} {
+        allow get: if isSignedIn()
+          && isValidId(reportId)
+          && isValidId(verifierUid)
+          && verifierUid == request.auth.uid;
+
+        allow list: if false;
+
+        allow create: if isVerifiedUser()
+          && isValidId(reportId)
+          && isValidId(verifierUid)
+          && verifierUid == request.auth.uid
+          && isValidReportVerification(incoming(), reportId, verifierUid)
+          && get(/databases/$(database)/documents/groundTruthReports/$(reportId)).data.status == 'active'
+          && getAfter(/databases/$(database)/documents/groundTruthReports/$(reportId)).data.verificationsCount
+             == get(/databases/$(database)/documents/groundTruthReports/$(reportId)).data.verificationsCount + 1;
+
+        allow update, delete: if false;
+      }
+    }
+
+    match /users/{userId}/thresholdRules/{ruleId} {
+      allow get: if isSignedIn()
+        && isValidId(userId)
+        && isValidId(ruleId)
+        && userId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && userId == request.auth.uid
+        && existing().userId == request.auth.uid;
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidId(ruleId)
+        && userId == request.auth.uid
+        && isValidThresholdRule(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidId(ruleId)
+        && userId == request.auth.uid
+        && existing().userId == request.auth.uid
+        && isValidThresholdRule(incoming(), userId)
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'enabled',
+          'checkTime',
+          'tempThresholdC',
+          'rainProbThreshold',
+          'windThresholdKmh',
+          'cityId',
+          'cityName',
+          'title',
+          'updatedAt'
+        ]);
+
+      allow delete: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidId(ruleId)
+        && userId == request.auth.uid
+        && existing().userId == request.auth.uid;
+    }
+  }
+}

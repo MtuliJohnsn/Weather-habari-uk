@@ -1,0 +1,239 @@
+{
+  "entities": {
+    "GroundTruthReport": {
+      "title": "GroundTruthReport",
+      "description": "A crowdsourced real-time weather or road hazard observation pinned to the map.",
+      "type": "object",
+      "properties": {
+        "tagType": {
+          "type": "string",
+          "enum": [
+            "street_flooded",
+            "bridge_fog",
+            "black_ice",
+            "high_crosswind",
+            "power_out",
+            "downed_tree",
+            "hail"
+          ],
+          "description": "Categorized ground truth hazard identifier."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60,
+          "description": "Human-readable tag label."
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 180,
+          "description": "Optional brief road or micro-weather context."
+        },
+        "lat": {
+          "type": "number",
+          "description": "Latitude coordinate in decimal degrees (-90 to 90)."
+        },
+        "lng": {
+          "type": "number",
+          "description": "Longitude coordinate in decimal degrees (-180 to 180)."
+        },
+        "roadOrArea": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Nearest street, bridge, or neighborhood label."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["caution", "hazard", "severe"],
+          "description": "Commuter risk level."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "resolved"],
+          "description": "Report lifecycle status."
+        },
+        "authorUid": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the reporting user."
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48,
+          "description": "Public display name (no PII email)."
+        },
+        "verificationsCount": {
+          "type": "integer",
+          "description": "Total crowd confirmations including original report."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last verification or status change."
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Expiration timestamp (within 24 hours of creation)."
+        }
+      },
+      "required": [
+        "tagType",
+        "label",
+        "note",
+        "lat",
+        "lng",
+        "roadOrArea",
+        "severity",
+        "status",
+        "authorUid",
+        "authorName",
+        "verificationsCount",
+        "createdAt",
+        "updatedAt",
+        "expiresAt"
+      ]
+    },
+    "ReportVerification": {
+      "title": "ReportVerification",
+      "description": "Per-user idempotent crowd confirmation record for a GroundTruthReport.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Verifier Auth UID matching document ID."
+        },
+        "reportId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Parent GroundTruthReport document ID."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of verification."
+        }
+      },
+      "required": ["uid", "reportId", "createdAt"]
+    },
+    "ThresholdAlertRule": {
+      "title": "ThresholdAlertRule",
+      "description": "User-configured plain-English weather threshold alert rule.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Owner Auth UID."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Plain-English summary of the alert rule."
+        },
+        "ruleType": {
+          "type": "string",
+          "enum": [
+            "jacket_or_umbrella",
+            "jacket",
+            "umbrella",
+            "wind",
+            "freeze",
+            "open_windows"
+          ],
+          "description": "Rule evaluation trigger type."
+        },
+        "checkTime": {
+          "type": "string",
+          "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+          "minLength": 5,
+          "maxLength": 5,
+          "description": "Daily evaluation time in HH:MM (24h)."
+        },
+        "cityId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Target city identifier."
+        },
+        "cityName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Target city display name."
+        },
+        "tempThresholdC": {
+          "type": "number",
+          "description": "Temperature threshold in Celsius."
+        },
+        "rainProbThreshold": {
+          "type": "integer",
+          "description": "Precipitation probability threshold (%)."
+        },
+        "windThresholdKmh": {
+          "type": "number",
+          "description": "Wind gust threshold in km/h."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether rule is active."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of update."
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "ruleType",
+        "checkTime",
+        "cityId",
+        "cityName",
+        "tempThresholdC",
+        "rainProbThreshold",
+        "windThresholdKmh",
+        "enabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/groundTruthReports/{reportId}": {
+      "schema": { "$ref": "#/entities/GroundTruthReport" },
+      "description": "Active and resolved crowdsourced ground-truth weather reports."
+    },
+    "/groundTruthReports/{reportId}/verifications/{verifierUid}": {
+      "schema": { "$ref": "#/entities/ReportVerification" },
+      "description": "Individual user confirmations preventing duplicate votes."
+    },
+    "/users/{userId}/thresholdRules/{ruleId}": {
+      "schema": { "$ref": "#/entities/ThresholdAlertRule" },
+      "description": "Private per-user custom threshold alert rules."
+    }
+  }
+}

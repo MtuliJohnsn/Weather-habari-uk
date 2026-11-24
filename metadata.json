@@ -1,0 +1,6 @@
+{
+  "name": "Stratus Weather",
+  "description": "Live city weather, °C/°F unit switching, local outdoor activity predictions, and severe weather push alerts.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

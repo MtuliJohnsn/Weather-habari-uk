@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="sun" x1="256" y1="108" x2="364" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <linearGradient id="cloud" x1="120" y1="200" x2="380" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#e0f2fe" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <circle cx="316" cy="182" r="76" fill="url(#sun)" />
+  <path
+    d="M174 352h174c41.97 0 76-34.03 76-76 0-39.18-29.65-71.43-67.74-75.55C343.17 159.42 304.88 130 259 130c-54.68 0-99.41 42.73-102.77 96.65C120.71 233.62 94 264.93 94 302c0 27.61 22.39 50 50 50h30z"
+    fill="url(#cloud)"
+  />
+  <path
+    d="M148 394h216"
+    stroke="#38bdf8"
+    stroke-width="14"
+    stroke-linecap="round"
+    stroke-opacity="0.7"
+  />
+</svg>
